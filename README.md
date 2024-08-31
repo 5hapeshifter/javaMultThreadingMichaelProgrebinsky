@@ -368,4 +368,181 @@ O DEADLOCK ocorre quando, exemplo:
 
 **Solution**
 - Avoid Circular wait - Enforce a strict order in lock acquisition - BEST SOLUTION
-- 
+
+
+# SECTION 7 - ADVANCED LOCKING
+
+- Works just like the synchronized keyword applied on an object
+- Requires explicit locking and unlocking - We can forget to lock, that is the risk
+
+Se uma exceção for lançada na execução dentro do lock, o unlock nunca será alcançado, esse é outro risco 
+
+```
+Lock lockObject = new ReentrantLock();
+
+public void use() throws SomeException {
+    lockObject.lock();
+    
+    throwExcptionMethod(); // se a exceção ocorrer aqui, o objeto ficará com lock pra sempre
+    
+    lockObject.unlock();
+
+}
+```
+Para resolver isso, colocamos as sessões críticas dentro do bloco try/finally
+
+```
+Lock lockObject = new ReentrantLock();
+
+public void use() throws SomeException {
+    lockObject.lock();
+    try {
+        throwExcptionMethod(); // se a exceção ocorrer aqui, o objeto ficará com lock pra sempre
+    } finally (
+        lockObject.unlock();
+    }
+}
+```
+
+**ReentrantLock - Why?**
+ ```
+ private Lock lockObject = new ReentrantLock();
+ ```
+
+For this complexity we are rewarded with more:
+- Control over the lock
+- More Lock operations
+
+Query methods - For testing
+- getQueuedThreads() - Returns a list of threads waiting to acquire a lock
+- getOwner() - Returns the thread that currently owns the lock
+- isHeldByCurrentThread() - Queries if the lock is held by the current thread
+- isLocked() - Queries if the lock is held by any thread
+
+**Every production code needs to be thoroughly tested**
+**For that methods like isLocked(), getQueuedThreads() and others can be very handy**
+
+- Another area where the ReentrantLock shines is the control over lock's fairness
+- By default, the ReentrantLock as well as synchronized keyword do NOT guarantee any fairness
+
+os dois pontos sobre fairness é que uma thread pode ser executada mais de uma vez seguida, para resolver isso devemos setar ReentrantLock(true)
+
+Fairness:
+- ReentrantLock(true)
+- May reduce the throughput of the application
+
+**ReentrantLock.lockInterruptibly()**
+
+Se uma thread2 tentar acessar um objeto que já está com lock por outra thread1, a thread2 vai ficar suspensa esperando até que o lock seja liberado, chamar o método thread2.interrupt() não fará a thread mudar de estado como no exemplo 1.
+
+```
+// Exemplo 1
+@Override
+public void run () {
+    while(true) {
+        lockObject.lock();
+        ...
+        if (Thread.currentThread().isInterrupted()){
+            cleanUpAndExit();
+        } 
+    }
+}
+
+// Exemplo 2
+@Override
+public void run () {
+    while(true) {
+        
+        try {
+            lockObject.lockInterruptbly();
+        } catch (InterruptedException e){
+            cleanUpAndExit();
+        }
+        
+        ...
+        if (Thread.currentThread().isInterrupted()){
+            cleanUpAndExit();
+        } 
+    }
+}
+```
+Mas se usar o método thread2.lockInterruptbly(), que tem que ser colocado dentro de um try/catch, a thread2 que estava suspensa acordará e saltará para o bloco try/catch onde podemos limpar a thread e finalizá-la;
+
+Esse método é muito útil se tivermos um 'Watchdog', para detecção de deadlocks, observando as threads para finalizá-las se necessário.
+
+**ReentrantLock.tryLock()**
+
+Outro método que podemos utilizar é o tryLock() que tenta obter o lock, se estiver disponível ele conseguirá e retornará 'true', senão vai retornar um 'false' e não bloqueia a thread, seguindo para a próxima execução.
+
+Exemplo: 
+
+```
+if(lockObject.tryLock()) {
+    try {
+        useResource();
+    } finally {
+        lockObject.unlock();
+    }
+} else { ... }
+```
+**Note about tryLock()**
+- Under no circumstances does the tryLock() method block!
+- Regardless of the state of the lock, it always returns immediately
+
+**TryLock() - USE CASES**
+- Real time applications where suspending a thread on a lock() method is unacceptable
+- Examples:
+  1. Video/Image processing
+  2. High Speed/Low latency trading systems
+  3. User Interface applications
+
+## ReentrantReadWriteLock - Why?
+
+Race Considtions require
+- Multiple threads sharing a resource
+- At least one thread modifying the resource
+
+Solution - Complete mutual exclusion
+- Regardless of operation (read/write/both)
+- Lock and allow only one thread to critical section
+
+**ReentrantReadWriteLock - Use Case**
+- Sunchronized and ReentrantLock do not allow multiple readers to access a shared resource concurrently.
+- Not a big problem in the general case
+- If we keep the critical sections short, the chances of a contention over a lock are minimal
+
+***When read operations are predominant or are not as fast***
+- Read from many variables
+- Read from a complex data structure
+- Mutual exclusion of reading threads negatively impacts the performance
+
+
+Para ler um dado da base, várias threads podem fazer isso ao mesmo tempo, mas para manipular algum recurso, somente uma thread(Writer) poderá fazer e enquanto a thread Writer estiver com o lock, as threads Reader não conseguirão o lock para ler o recurso, terão que esperar quem está com o writeLock terminar.
+
+![img_5.png](img_5.png)
+
+Várias threads podem pegar o readLock
+
+```
+readLock.lock();
+try {
+    readFromSharedResources();
+} finally {
+    readLock.unlock();
+}
+```
+
+Somente uma thread é permitido pegar o writeLock
+
+```
+writeLock.lock();
+try {
+    readFromSharedResources();
+} finally {
+    writeLock.unlock();
+}
+```
+
+**Mutual Exclusion between readers and writers
+- If a write lock is acquired, no thread can acquire a read lock
+- If at least one thread holds a read lock, no thread can acquire a write lock
