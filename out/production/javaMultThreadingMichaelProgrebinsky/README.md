@@ -1,3 +1,8 @@
+`Português: Esse material foi feito com base no curso de Threads do Michael Progrebinsky, link abaixo, que é ótimo e indico para qualquer pessoa que queira aprender sobre o tema.  Os trechos em inglês foram extraídos das apresentações no curso.`
+
+`English: This material was created based on Michael Progrebinsky's Threads course, link below, which is great and I recommend it to anyone who wants to learn about the topic.The excerpts in English were taken from the course presentations.`
+### Link: https://www.udemy.com/course/java-multithreading-concurrency-performance-optimization/ 
+
 # SECTION 2 - THREAD CREATION
 Em java Thread implementa Runnable que é uma interface (Sugestão no javadoc é que todo classe que for executada por uma Thread implemente Runnable) e fornece o método 'run()' que deve ser sobrescrito. 
 
@@ -34,7 +39,7 @@ A thread1 pode terminar antes da thread2, ou o inverso, ou ainda serem executada
 Precisamos controlar as threads quando tivermos um cenário onde uma thread depende da outra, uma termina o processo para a outra começar.
 
 ## Thread coordination - Naive Solution
-Thread B runs in a loop and keeps checking if ThreadA rasult is ready, but this is busy way, its extremely inefficient
+Thread B runs in a loop and keeps checking if ThreadA rasult is ready, but this is the busy way, its extremely inefficient
 
 ```
 void waitForThreadA(){
@@ -46,7 +51,7 @@ void waitForThreadA(){
 
 ## Thread coordination - Desired Solution
 
-Thread B checks and goes to sleep, than when Thread A ends his proccess, Thread B wakes up and starting. 
+Thread B checks and goes to sleep, then when Thread A ends his proccess, Thread B wakes up and starting. 
 For this we must use 'join' methods:
 - public final void join()
 - public final void join(long millis, int nanos)
@@ -89,7 +94,7 @@ As threads só podem ser executadas de forma paralela quando estiverem em cores 
 
 Ou seja, para diminuir a latência temos que executar as tarefas em paralelo, cada uma em um core.
 
-- threads in cores is optimal only if all threads are runnable and can run whithout interruption(no IO/ blocking calls/ sleep etc)
+- threads in cores is optimal only if all threads are runnable and can run whithout interruption(no IO/ blocking calls/ sleep etc.)
 
 - the assumption is nothing els is running that consumes a lot of cpu
 
@@ -108,12 +113,13 @@ Essa técnica é utilizada para que várias tasks sejam distribuídas entre as t
 
 Construir uma pool de thread não é uma tarefa fácil e para isso utilizamos 'Executor':
 
+```
 int numberOfThreads = 4;
 Executor  executor = Executors.newFixedThreadPool(numberOfThreads);
 
 Runnable task = ...;
 executor.execute(task);
-
+```
 - By serving each task on a different thread, in parallel, we can improve throughput by 'N'
 - N = threads = cores
 - Using a Fixed Thread Pool, we maintain constant number of threads, and eliminate the need to recreate the threads
@@ -264,7 +270,7 @@ public void setNumber(){ // atomic
   5. char
   6. boolean
 
-*While reading, I came across a paragraph entitled “Nonatomic 64-bit operations“. I actually never knew that in java 64-bit long and double values to be treated as two 32-bit values.  That means, a 64 bit write operation is basically performed as two separate 32-bit operations. This behavior can result in indeterminate values being read in code and that lacks atomicity. https://codexplo.wordpress.com/2015/12/07/longdouble-are-not-atomic-in-java/*
+*While reading, I came across a paragraph entitled 'Nonatomic 64-bit operations'. I actually never knew that in java 64-bit long and double values to be treated as two 32-bit values.  That means, a 64 bit write operation is basically performed as two separate 32-bit operations. This behavior can result in indeterminate values being read in code and that lacks atomicity. https://codexplo.wordpress.com/2015/12/07/longdouble-are-not-atomic-in-java/*
 
 Para resolver esse problema de double e long devemos utilizar a keyword "volatile"
 
@@ -278,7 +284,7 @@ volatile long x = 123456789L;
 - Condition when multiple threads are accessing a shared resource
 - At least one thread is modifying the resource
 - The timing of threads' scheduling may cause incorrect results
-- The core of the problem is non atomic operations performed on the shared resource
+- The core of the problem is non-atomic operations performed on the shared resource
 
 Isso ocorre no exemplo do Ecommerce da seção 5, onde protegemos com o synchronized block ou com a palavra synchronized no método.
 
@@ -294,7 +300,7 @@ Esse problema ocorre quando há alteração do dado que está sendo compartilhad
 - They will do so while maintaining the logical correctness of the code
 - Out of Order execution by the compuler and CPU are important features to speed up the code.
 - The compuler re-arranges instructions for better
-    1. Branch predication(optimized loops, "if" statements etc)
+    1. Branch predication(optimized loops, "if" statements etc.)
     2. Vectorization - parallel instruction execution (SIMD)
     3. Prefetching instructions - better cache performance
 - CPU re-arranges instructions for better hardware units
@@ -546,3 +552,45 @@ try {
 **Mutual Exclusion between readers and writers
 - If a write lock is acquired, no thread can acquire a read lock
 - If at least one thread holds a read lock, no thread can acquire a write lock
+
+## Atomic Classes
+
+**Atomic Integer**
+Usando o atomic integer, não precisamos usar a keyword 'synchronized' nem dar lock na sessão crítica de um contador.
+- AtomicInteger is a great tool for concurrent couting, whithout the complecity of using a lock
+- AtomicInteger should be used only when atomic operation are nedded
+- It's on par and sometimes more performant than a regular integer with a lock as protection
+- If used only by a single thread, a regular integer is prefered
+```
+private AtomicInteger items = new AtomicInteger(0);
+```
+AtomicLong fornece as mesmas capacidades que AtomicInteger e, similarmente, AtomicBoolean fornece operações atomicas para valores booleanos.
+
+## Atomic Reference 
+
+Referencia atomica representa uma uma referencia a um objeto de uma classe e nos dá a capacidade de realizar operações atômicas.
+
+Instanciamos uma referência atômica passando o objeto ao construtor. Podemos setar ou pegar a referência atual com get e set. 
+
+```
+new AtomicReference(V value);
+
+V get();
+void set(V newValue);
+```
+
+O bloco de construção mais importante de toas as classes e métodos sem registro é a operação de comparação CAS - CompareAndSet operation
+O método 'compareAndSet()' compara se o valor atual é igual ao valor esperado, se for ele faz a atribuição, senão ele ignora o novo valor.
+
+CAS - CompareAndSet():
+- Disponível em todas classes atômicas
+- Compila em um operação atômica de hardware
+- Muitos outros métodos são internamente implementados utilizando CAS.
+
+
+
+
+
+
+
+
